@@ -505,7 +505,7 @@ textarea.field-input {
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-slider {
   position: absolute;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   background: #d1d5de;
   border-radius: 14px;
   cursor: pointer;
@@ -800,7 +800,7 @@ textarea.field-input {
 /* ── SUCCESS OVERLAY ── */
 .success-overlay {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   background: rgba(255,255,255,0.97);
   display: none;
   align-items: center;
@@ -885,7 +885,7 @@ textarea.field-input {
 /* ── CONFETTI ── */
 .confetti-container {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   pointer-events: none;
   z-index: 310;
   overflow: hidden;
@@ -1556,23 +1556,23 @@ textarea.field-input {
 // ════════════════════════════════════════
 //  DATA LAYER
 // ════════════════════════════════════════
-const STORAGE_KEY = 'da_monthly_reports';
+var STORAGE_KEY = 'da_monthly_reports';
 
 function getAllData() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-  catch { return {}; }
+  catch(e) { return {}; }
 }
 function getChurchHistory(name) {
   return getAllData()[name] || [];
 }
 function saveSubmission(churchName, entry) {
-  const data = getAllData();
+  var data = getAllData();
   if (!data[churchName]) data[churchName] = [];
   data[churchName].push(entry);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 function getLastSubmission(churchName) {
-  const h = getChurchHistory(churchName);
+  var h = getChurchHistory(churchName);
   return h.length > 0 ? h[h.length - 1] : null;
 }
 function getAllChurchNames() {
@@ -1582,9 +1582,9 @@ function getAllChurchNames() {
 // ════════════════════════════════════════
 //  WIZARD NAVIGATION
 // ════════════════════════════════════════
-let currentStep = 0;
-const TOTAL_STEPS = 7;
-const stepNames = [
+var currentStep = 0;
+var TOTAL_STEPS = 7;
+var stepNames = [
   'Church & Pastor',
   'Attendance & Spiritual Life',
   'Financials',
@@ -1658,8 +1658,8 @@ function prevStep() {
 
 function updateStepUI() {
   // Dots
-  const dots = document.querySelectorAll('.step-dot');
-  const connectors = document.querySelectorAll('.step-connector');
+  var dots = document.querySelectorAll('.step-dot');
+  var connectors = document.querySelectorAll('.step-connector');
   dots.forEach(function(dot, i) {
     dot.classList.remove('active', 'completed');
     if (i === currentStep) dot.classList.add('active');
@@ -1806,7 +1806,7 @@ function updateCelebration() {
     function showSuggestions() {
       var names = getAllChurchNames();
       var val = input.value.trim().toLowerCase();
-      var filtered = val ? names.filter(function(n) { return n.toLowerCase().includes(val); }) : names;
+      var filtered = val ? names.filter(function(n) { return n.toLowerCase().indexOf(val) >= 0; }) : names;
 
       if (filtered.length === 0) {
         dropdown.classList.remove('visible');

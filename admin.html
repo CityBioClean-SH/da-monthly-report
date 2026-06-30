@@ -467,11 +467,11 @@ body {
 // ════════════════════════════════════════════════
 //  DATA LAYER — matches DA_Monthly_Report.html
 // ════════════════════════════════════════════════
-const STORAGE_KEY = 'da_monthly_reports';
+var STORAGE_KEY = 'da_monthly_reports';
 
 function getAllData() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-  catch { return {}; }
+  catch(e) { return {}; }
 }
 
 function setAllData(data) {
@@ -479,37 +479,53 @@ function setAllData(data) {
 }
 
 // ════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════
+function padTwo(n) {
+  return n < 10 ? '0' + n : '' + n;
+}
+
+function makeYM(year, month) {
+  return year + '-' + padTwo(month);
+}
+
+function entryYM(entry) {
+  var d = new Date(entry.timestamp);
+  return makeYM(d.getFullYear(), d.getMonth() + 1);
+}
+
+// ════════════════════════════════════════════════
 //  MONTH FILTER
 // ════════════════════════════════════════════════
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function populateMonthFilter() {
-  const sel = document.getElementById('monthFilter');
+  var sel = document.getElementById('monthFilter');
   sel.innerHTML = '';
-  // Build list of months that have data, plus current month
-  const now = new Date();
-  const allData = getAllData();
-  const monthSet = new Set();
-  monthSet.add(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
-  for (const church of Object.keys(allData)) {
-    for (const entry of allData[church]) {
-      const d = new Date(entry.timestamp);
-      monthSet.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  var now = new Date();
+  var allData = getAllData();
+  var monthObj = {};
+  monthObj[makeYM(now.getFullYear(), now.getMonth() + 1)] = true;
+  var churchKeys = Object.keys(allData);
+  for (var ci = 0; ci < churchKeys.length; ci++) {
+    var churchEntries = allData[churchKeys[ci]];
+    for (var ei = 0; ei < churchEntries.length; ei++) {
+      monthObj[entryYM(churchEntries[ei])] = true;
     }
   }
-  const sorted = [...monthSet].sort().reverse();
-  for (const ym of sorted) {
-    const [y, m] = ym.split('-');
-    const opt = document.createElement('option');
+  var sorted = Object.keys(monthObj).sort().reverse();
+  for (var si = 0; si < sorted.length; si++) {
+    var ym = sorted[si];
+    var parts = ym.split('-');
+    var opt = document.createElement('option');
     opt.value = ym;
-    opt.textContent = `${MONTHS[parseInt(m)-1]} ${y}`;
+    opt.textContent = MONTHS[parseInt(parts[1]) - 1] + ' ' + parts[0];
     sel.appendChild(opt);
   }
-  // Add "All Time" option
-  const all = document.createElement('option');
-  all.value = 'all';
-  all.textContent = 'All Time';
-  sel.appendChild(all);
+  var allOpt = document.createElement('option');
+  allOpt.value = 'all';
+  allOpt.textContent = 'All Time';
+  sel.appendChild(allOpt);
 }
 
 function getSelectedMonth() {
@@ -518,31 +534,31 @@ function getSelectedMonth() {
 
 function entryMatchesMonth(entry, ym) {
   if (ym === 'all') return true;
-  const d = new Date(entry.timestamp);
-  const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  return key === ym;
+  return entryYM(entry) === ym;
 }
 
 function getPreviousMonth(ym) {
   if (ym === 'all') return null;
-  const [y, m] = ym.split('-').map(Number);
-  const prev = m === 1 ? `${y-1}-12` : `${y}-${String(m-1).padStart(2,'0')}`;
-  return prev;
+  var parts = ym.split('-');
+  var y = parseInt(parts[0]);
+  var m = parseInt(parts[1]);
+  if (m === 1) return (y - 1) + '-12';
+  return y + '-' + padTwo(m - 1);
 }
 
 // ════════════════════════════════════════════════
 //  RENDER DASHBOARD
 // ════════════════════════════════════════════════
-let attendTrendChart = null;
-let salvBaptChart = null;
-let comparisonChart = null;
-let detailLineChart = null;
+var attendTrendChart = null;
+var salvBaptChart = null;
+var comparisonChart = null;
+var detailLineChart = null;
 
 function renderDashboard() {
-  const allData = getAllData();
-  const churches = Object.keys(allData);
-  const container = document.getElementById('dashboardContainer');
-  const emptyEl = document.getElementById('emptyState');
+  var allData = getAllData();
+  var churches = Object.keys(allData);
+  var container = document.getElementById('dashboardContainer');
+  var emptyEl = document.getElementById('emptyState');
 
   if (churches.length === 0) {
     emptyEl.style.display = '';
@@ -552,31 +568,32 @@ function renderDashboard() {
   }
   emptyEl.style.display = 'none';
 
-  const ym = getSelectedMonth();
-  const prevYm = getPreviousMonth(ym);
+  var ym = getSelectedMonth();
+  var prevYm = getPreviousMonth(ym);
 
   // Gather current month and previous month data per church
-  const churchStats = [];
-  for (const name of churches) {
-    const entries = allData[name];
-    const current = entries.filter(e => entryMatchesMonth(e, ym));
-    const prev = prevYm ? entries.filter(e => entryMatchesMonth(e, prevYm)) : [];
-    const latest = current.length ? current[current.length - 1] : null;
-    const prevLatest = prev.length ? prev[prev.length - 1] : null;
-    const lastEntry = entries[entries.length - 1];
-    churchStats.push({ name, entries, current, prev, latest, prevLatest, lastEntry });
+  var churchStats = [];
+  for (var ni = 0; ni < churches.length; ni++) {
+    var cName = churches[ni];
+    var cEntries = allData[cName];
+    var current = cEntries.filter(function(e) { return entryMatchesMonth(e, ym); });
+    var prev = prevYm ? cEntries.filter(function(e) { return entryMatchesMonth(e, prevYm); }) : [];
+    var latest = current.length ? current[current.length - 1] : null;
+    var prevLatest = prev.length ? prev[prev.length - 1] : null;
+    var lastEntry = cEntries[cEntries.length - 1];
+    churchStats.push({ name: cName, entries: cEntries, current: current, prev: prev, latest: latest, prevLatest: prevLatest, lastEntry: lastEntry });
   }
 
   // Summary computations
-  const reportingCount = churchStats.filter(c => c.current.length > 0).length;
-  const prevReportingCount = churchStats.filter(c => c.prev.length > 0).length;
+  var reportingCount = churchStats.filter(function(c) { return c.current.length > 0; }).length;
+  var prevReportingCount = churchStats.filter(function(c) { return c.prev.length > 0; }).length;
 
-  let totalAttCurrent = 0, totalAttPrev = 0;
-  let totalSalvCurrent = 0, totalSalvYTD = 0;
-  let totalWaterCurrent = 0, totalSpiritCurrent = 0;
-  const currentYear = new Date().getFullYear();
+  var totalAttCurrent = 0, totalAttPrev = 0;
+  var totalSalvCurrent = 0, totalSalvYTD = 0;
+  var totalWaterCurrent = 0, totalSpiritCurrent = 0;
+  var currentYear = new Date().getFullYear();
 
-  churchStats.forEach(c => {
+  churchStats.forEach(function(c) {
     if (c.latest) {
       totalAttCurrent += (c.latest.attendAdults || 0) + (c.latest.attendMinors || 0);
       totalSalvCurrent += (c.latest.salvations || 0);
@@ -586,39 +603,34 @@ function renderDashboard() {
     if (c.prevLatest) {
       totalAttPrev += (c.prevLatest.attendAdults || 0) + (c.prevLatest.attendMinors || 0);
     }
-    // YTD salvations
-    c.entries.filter(e => new Date(e.timestamp).getFullYear() === currentYear).forEach(e => {
+    c.entries.filter(function(e) { return new Date(e.timestamp).getFullYear() === currentYear; }).forEach(function(e) {
       totalSalvYTD += (e.salvations || 0);
     });
   });
 
-  const attDelta = totalAttCurrent - totalAttPrev;
-  const reportDelta = reportingCount - prevReportingCount;
+  var attDelta = totalAttCurrent - totalAttPrev;
+  var reportDelta = reportingCount - prevReportingCount;
 
   // Build month label mapping for charts (last 6 months)
-  const allMonths = new Set();
-  churches.forEach(ch => {
-    allData[ch].forEach(e => {
-      const d = new Date(e.timestamp);
-      allMonths.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  var allMonthsObj = {};
+  churches.forEach(function(ch) {
+    allData[ch].forEach(function(e) {
+      allMonthsObj[entryYM(e)] = true;
     });
   });
-  const sortedMonths = [...allMonths].sort().slice(-6);
-  const monthLabels = sortedMonths.map(m => {
-    const [y, mo] = m.split('-');
-    return MONTHS[parseInt(mo)-1].slice(0,3) + ' ' + y.slice(2);
+  var sortedMonths = Object.keys(allMonthsObj).sort().slice(-6);
+  var monthLabels = sortedMonths.map(function(m) {
+    var p = m.split('-');
+    return MONTHS[parseInt(p[1]) - 1].slice(0, 3) + ' ' + p[0].slice(2);
   });
 
   // Attendance trend data (total section)
-  const attTrendData = sortedMonths.map(m => {
-    let total = 0;
-    churches.forEach(ch => {
-      const match = allData[ch].filter(e => {
-        const d = new Date(e.timestamp);
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === m;
-      });
+  var attTrendData = sortedMonths.map(function(m) {
+    var total = 0;
+    churches.forEach(function(ch) {
+      var match = allData[ch].filter(function(e) { return entryYM(e) === m; });
       if (match.length) {
-        const last = match[match.length - 1];
+        var last = match[match.length - 1];
         total += (last.attendAdults || 0) + (last.attendMinors || 0);
       }
     });
@@ -626,39 +638,39 @@ function renderDashboard() {
   });
 
   // Salvations + baptisms trend
-  const salvTrendData = sortedMonths.map(m => {
-    let total = 0;
-    churches.forEach(ch => {
-      allData[ch].filter(e => {
-        const d = new Date(e.timestamp);
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === m;
-      }).forEach(e => { total += (e.salvations || 0); });
+  var salvTrendData = sortedMonths.map(function(m) {
+    var total = 0;
+    churches.forEach(function(ch) {
+      allData[ch].filter(function(e) { return entryYM(e) === m; }).forEach(function(e) {
+        total += (e.salvations || 0);
+      });
     });
     return total;
   });
-  const baptTrendData = sortedMonths.map(m => {
-    let total = 0;
-    churches.forEach(ch => {
-      allData[ch].filter(e => {
-        const d = new Date(e.timestamp);
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === m;
-      }).forEach(e => { total += (e.waterBaptisms || 0) + (e.spiritBaptisms || 0); });
+  var baptTrendData = sortedMonths.map(function(m) {
+    var total = 0;
+    churches.forEach(function(ch) {
+      allData[ch].filter(function(e) { return entryYM(e) === m; }).forEach(function(e) {
+        total += (e.waterBaptisms || 0) + (e.spiritBaptisms || 0);
+      });
     });
     return total;
   });
 
   // Comparison data (sorted by current attendance)
-  const compData = churchStats.map(c => ({
-    name: c.name,
-    adults: c.latest ? (c.latest.attendAdults || 0) : 0,
-    minors: c.latest ? (c.latest.attendMinors || 0) : 0,
-    total: c.latest ? (c.latest.attendAdults || 0) + (c.latest.attendMinors || 0) : 0
-  })).sort((a, b) => b.total - a.total);
+  var compData = churchStats.map(function(c) {
+    return {
+      name: c.name,
+      adults: c.latest ? (c.latest.attendAdults || 0) : 0,
+      minors: c.latest ? (c.latest.attendMinors || 0) : 0,
+      total: c.latest ? (c.latest.attendAdults || 0) + (c.latest.attendMinors || 0) : 0
+    };
+  }).sort(function(a, b) { return b.total - a.total; });
 
   // Reporting status (sorted: missing first, then alphabetical)
-  const statusItems = churchStats.map(c => {
-    let status = 'red';
-    let statusLabel = 'No reports';
+  var statusItems = churchStats.map(function(c) {
+    var status = 'red';
+    var statusLabel = 'No reports';
     if (c.current.length > 0) {
       status = 'green';
       statusLabel = 'Reported';
@@ -666,20 +678,29 @@ function renderDashboard() {
       status = 'yellow';
       statusLabel = 'Last month only';
     }
-    const lastDate = c.lastEntry ? new Date(c.lastEntry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'Never';
-    const lastAtt = c.lastEntry ? (c.lastEntry.attendAdults || 0) + (c.lastEntry.attendMinors || 0) : 0;
-    const lastSalv = c.lastEntry ? (c.lastEntry.salvations || 0) : 0;
-    const pastorName = c.lastEntry ? `${c.lastEntry.pastorFirst || ''} ${c.lastEntry.pastorLast || ''}`.trim() : 'Unknown';
-    return { ...c, status, statusLabel, lastDate, lastAtt, lastSalv, pastorName };
-  }).sort((a, b) => {
-    const order = { red: 0, yellow: 1, green: 2 };
+    var lastDate = c.lastEntry ? new Date(c.lastEntry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'Never';
+    var lastAtt = c.lastEntry ? (c.lastEntry.attendAdults || 0) + (c.lastEntry.attendMinors || 0) : 0;
+    var lastSalv = c.lastEntry ? (c.lastEntry.salvations || 0) : 0;
+    var pastorName = c.lastEntry ? ((c.lastEntry.pastorFirst || '') + ' ' + (c.lastEntry.pastorLast || '')).trim() : 'Unknown';
+    // Copy all properties from c plus new ones
+    var result = {};
+    for (var k in c) { if (c.hasOwnProperty(k)) result[k] = c[k]; }
+    result.status = status;
+    result.statusLabel = statusLabel;
+    result.lastDate = lastDate;
+    result.lastAtt = lastAtt;
+    result.lastSalv = lastSalv;
+    result.pastorName = pastorName;
+    return result;
+  }).sort(function(a, b) {
+    var order = { red: 0, yellow: 1, green: 2 };
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
     return a.name.localeCompare(b.name);
   });
 
   // Compliance data
-  const complianceRows = churchStats.map(c => {
-    const last = c.lastEntry;
+  var complianceRows = churchStats.map(function(c) {
+    var last = c.lastEntry;
     return {
       name: c.name,
       ministrySafe: last ? (last.ministrySafe || '') : '',
@@ -697,117 +718,95 @@ function renderDashboard() {
   }
   function insuranceIcon(arr) {
     if (!arr.length) return '<span class="icon-q" title="Unknown">?</span>';
-    if (arr.includes('None')) return '<span class="icon-check" title="No issues">&#10003;</span>';
+    if (arr.indexOf('None') >= 0) return '<span class="icon-check" title="No issues">&#10003;</span>';
     return '<span class="icon-x" title="' + arr.join(', ') + '">&#10007;</span>';
   }
 
   // Church selector for detail
-  const detailOptions = churches.sort().map(n => `<option value="${n}">${n}</option>`).join('');
+  var detailOptions = churches.sort().map(function(n) {
+    return '<option value="' + n.replace(/"/g, '&quot;') + '">' + esc(n) + '</option>';
+  }).join('');
 
-  container.innerHTML = `
-    <!-- Row 1: Summary Cards -->
-    <div class="summary-row">
-      <div class="summary-card">
-        <div class="label">Churches Reporting</div>
-        <div class="value">${reportingCount} <span style="font-size:16px;font-weight:500;color:var(--text-muted)">/ ${churches.length}</span></div>
-        <div class="delta ${reportDelta > 0 ? 'up' : reportDelta < 0 ? 'down' : 'neutral'}">${reportDelta > 0 ? '+' : ''}${reportDelta} vs last month</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">Combined Attendance</div>
-        <div class="value">${totalAttCurrent.toLocaleString()}</div>
-        <div class="delta ${attDelta > 0 ? 'up' : attDelta < 0 ? 'down' : 'neutral'}">${attDelta > 0 ? '&#9650; +' : attDelta < 0 ? '&#9660; ' : ''}${attDelta.toLocaleString()} from last month</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">Salvations</div>
-        <div class="value">${totalSalvCurrent}</div>
-        <div class="delta neutral">${totalSalvYTD} YTD (${currentYear})</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">Total Baptisms</div>
-        <div class="value">${totalWaterCurrent + totalSpiritCurrent}</div>
-        <div class="delta neutral">${totalWaterCurrent} water + ${totalSpiritCurrent} spirit</div>
-      </div>
-    </div>
+  // Build status items HTML
+  var statusHtml = statusItems.map(function(s) {
+    return '<div class="status-item">'
+      + '<div class="status-dot ' + s.status + '" title="' + s.statusLabel + '"></div>'
+      + '<div class="status-info">'
+      + '<div class="status-church">' + esc(s.name) + '</div>'
+      + '<div class="status-pastor">' + esc(s.pastorName) + ' &middot; Last: ' + s.lastDate + '</div>'
+      + '</div>'
+      + '<div class="status-stats">'
+      + '<div class="att">' + s.lastAtt + '</div>'
+      + '<div class="meta">' + s.lastSalv + ' saved</div>'
+      + '</div></div>';
+  }).join('');
 
-    <!-- Row 2: Reporting Status -->
-    <div class="section-header">Reporting Status <span class="badge">${ym === 'all' ? 'All Time' : document.getElementById('monthFilter').selectedOptions[0].textContent}</span></div>
-    <div class="card">
-      <div class="status-grid">
-        ${statusItems.map(s => `
-          <div class="status-item">
-            <div class="status-dot ${s.status}" title="${s.statusLabel}"></div>
-            <div class="status-info">
-              <div class="status-church">${esc(s.name)}</div>
-              <div class="status-pastor">${esc(s.pastorName)} &middot; Last: ${s.lastDate}</div>
-            </div>
-            <div class="status-stats">
-              <div class="att">${s.lastAtt}</div>
-              <div class="meta">${s.lastSalv} saved</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
+  // Build compliance rows HTML
+  var complianceHtml = complianceRows.map(function(r) {
+    return '<tr>'
+      + '<td style="font-weight:600;">' + esc(r.name) + '</td>'
+      + '<td style="text-align:center;">' + complianceIcon(r.ministrySafe, 'Yes') + '</td>'
+      + '<td style="text-align:center;">' + complianceIcon(r.aplos, 'Yes') + '</td>'
+      + '<td style="text-align:center;">' + insuranceIcon(r.insurance) + '</td>'
+      + '<td>' + r.lastDate + '</td></tr>';
+  }).join('');
 
-    <!-- Row 3: Charts -->
-    <div class="chart-row">
-      <div class="chart-card">
-        <div class="chart-title">Attendance Trend (Section Total)</div>
-        <canvas id="attendTrendCanvas" height="260"></canvas>
-      </div>
-      <div class="chart-card">
-        <div class="chart-title">Salvations &amp; Baptisms</div>
-        <canvas id="salvBaptCanvas" height="260"></canvas>
-      </div>
-    </div>
+  // Delta class helpers
+  var reportDeltaClass = reportDelta > 0 ? 'up' : reportDelta < 0 ? 'down' : 'neutral';
+  var attDeltaClass = attDelta > 0 ? 'up' : attDelta < 0 ? 'down' : 'neutral';
+  var attDeltaPrefix = attDelta > 0 ? '&#9650; +' : attDelta < 0 ? '&#9660; ' : '';
+  var reportDeltaPrefix = reportDelta > 0 ? '+' : '';
 
-    <!-- Row 4: Church Comparison -->
-    <div class="section-header">Church Comparison</div>
-    <div class="card">
-      <canvas id="comparisonCanvas" height="${Math.max(200, compData.length * 40)}"></canvas>
-    </div>
+  var monthFilterLabel = ym === 'all' ? 'All Time' : document.getElementById('monthFilter').selectedOptions[0].textContent;
 
-    <!-- Row 5: Compliance Overview -->
-    <div class="section-header">Compliance Overview</div>
-    <div class="card" style="overflow-x:auto;">
-      <table class="compliance-table">
-        <thead>
-          <tr>
-            <th>Church</th>
-            <th>Ministry Safe</th>
-            <th>Aplos</th>
-            <th>Insurance</th>
-            <th>Last Reported</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${complianceRows.map(r => `
-            <tr>
-              <td style="font-weight:600;">${esc(r.name)}</td>
-              <td style="text-align:center;">${complianceIcon(r.ministrySafe, 'Yes')}</td>
-              <td style="text-align:center;">${complianceIcon(r.aplos, 'Yes')}</td>
-              <td style="text-align:center;">${insuranceIcon(r.insurance)}</td>
-              <td>${r.lastDate}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
+  container.innerHTML = ''
+    + '<!-- Row 1: Summary Cards -->'
+    + '<div class="summary-row">'
+    + '<div class="summary-card">'
+    + '<div class="label">Churches Reporting</div>'
+    + '<div class="value">' + reportingCount + ' <span style="font-size:16px;font-weight:500;color:var(--text-muted)">/ ' + churches.length + '</span></div>'
+    + '<div class="delta ' + reportDeltaClass + '">' + reportDeltaPrefix + reportDelta + ' vs last month</div>'
+    + '</div>'
+    + '<div class="summary-card">'
+    + '<div class="label">Combined Attendance</div>'
+    + '<div class="value">' + totalAttCurrent.toLocaleString() + '</div>'
+    + '<div class="delta ' + attDeltaClass + '">' + attDeltaPrefix + attDelta.toLocaleString() + ' from last month</div>'
+    + '</div>'
+    + '<div class="summary-card">'
+    + '<div class="label">Salvations</div>'
+    + '<div class="value">' + totalSalvCurrent + '</div>'
+    + '<div class="delta neutral">' + totalSalvYTD + ' YTD (' + currentYear + ')</div>'
+    + '</div>'
+    + '<div class="summary-card">'
+    + '<div class="label">Total Baptisms</div>'
+    + '<div class="value">' + (totalWaterCurrent + totalSpiritCurrent) + '</div>'
+    + '<div class="delta neutral">' + totalWaterCurrent + ' water + ' + totalSpiritCurrent + ' spirit</div>'
+    + '</div></div>'
+    + '<!-- Row 2: Reporting Status -->'
+    + '<div class="section-header">Reporting Status <span class="badge">' + monthFilterLabel + '</span></div>'
+    + '<div class="card"><div class="status-grid">' + statusHtml + '</div></div>'
+    + '<!-- Row 3: Charts -->'
+    + '<div class="chart-row">'
+    + '<div class="chart-card"><div class="chart-title">Attendance Trend (Section Total)</div><canvas id="attendTrendCanvas" height="260"></canvas></div>'
+    + '<div class="chart-card"><div class="chart-title">Salvations &amp; Baptisms</div><canvas id="salvBaptCanvas" height="260"></canvas></div>'
+    + '</div>'
+    + '<!-- Row 4: Church Comparison -->'
+    + '<div class="section-header">Church Comparison</div>'
+    + '<div class="card"><canvas id="comparisonCanvas" height="' + Math.max(200, compData.length * 40) + '"></canvas></div>'
+    + '<!-- Row 5: Compliance Overview -->'
+    + '<div class="section-header">Compliance Overview</div>'
+    + '<div class="card" style="overflow-x:auto;">'
+    + '<table class="compliance-table"><thead><tr>'
+    + '<th>Church</th><th>Ministry Safe</th><th>Aplos</th><th>Insurance</th><th>Last Reported</th>'
+    + '</tr></thead><tbody>' + complianceHtml + '</tbody></table></div>'
+    + '<!-- Row 6: Individual Church Detail -->'
+    + '<div class="section-header">Individual Church Detail</div>'
+    + '<div class="card"><div class="detail-controls">'
+    + '<select id="detailChurchSelect" onchange="renderDetail()">'
+    + '<option value="">-- Select a church --</option>' + detailOptions
+    + '</select></div><div id="detailContent"></div></div>';
 
-    <!-- Row 6: Individual Church Detail -->
-    <div class="section-header">Individual Church Detail</div>
-    <div class="card">
-      <div class="detail-controls">
-        <select id="detailChurchSelect" onchange="renderDetail()">
-          <option value="">-- Select a church --</option>
-          ${detailOptions}
-        </select>
-      </div>
-      <div id="detailContent"></div>
-    </div>
-  `;
-
-  // ── Build Charts ──
+  // Build Charts
   buildAttendanceTrendChart(monthLabels, attTrendData);
   buildSalvBaptChart(monthLabels, salvTrendData, baptTrendData);
   buildComparisonChart(compData);
@@ -815,15 +814,15 @@ function renderDashboard() {
 
 function buildAttendanceTrendChart(labels, data) {
   if (attendTrendChart) attendTrendChart.destroy();
-  const ctx = document.getElementById('attendTrendCanvas');
+  var ctx = document.getElementById('attendTrendCanvas');
   if (!ctx) return;
   attendTrendChart = new Chart(ctx.getContext('2d'), {
     type: 'line',
     data: {
-      labels,
+      labels: labels,
       datasets: [{
         label: 'Total Attendance',
-        data,
+        data: data,
         borderColor: '#3b82f6',
         backgroundColor: 'rgba(59,130,246,0.08)',
         fill: true,
@@ -839,7 +838,7 @@ function buildAttendanceTrendChart(labels, data) {
       responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' total attendance' } }
+        tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y.toLocaleString() + ' total attendance'; } } }
       },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 12, family: 'Inter', weight: '500' }, color: '#8d96a8' } },
@@ -851,12 +850,12 @@ function buildAttendanceTrendChart(labels, data) {
 
 function buildSalvBaptChart(labels, salvData, baptData) {
   if (salvBaptChart) salvBaptChart.destroy();
-  const ctx = document.getElementById('salvBaptCanvas');
+  var ctx = document.getElementById('salvBaptCanvas');
   if (!ctx) return;
   salvBaptChart = new Chart(ctx.getContext('2d'), {
     type: 'bar',
     data: {
-      labels,
+      labels: labels,
       datasets: [
         {
           label: 'Salvations',
@@ -889,23 +888,23 @@ function buildSalvBaptChart(labels, salvData, baptData) {
 
 function buildComparisonChart(data) {
   if (comparisonChart) comparisonChart.destroy();
-  const ctx = document.getElementById('comparisonCanvas');
+  var ctx = document.getElementById('comparisonCanvas');
   if (!ctx) return;
   comparisonChart = new Chart(ctx.getContext('2d'), {
     type: 'bar',
     data: {
-      labels: data.map(d => d.name),
+      labels: data.map(function(d) { return d.name; }),
       datasets: [
         {
           label: 'Adults',
-          data: data.map(d => d.adults),
+          data: data.map(function(d) { return d.adults; }),
           backgroundColor: 'rgba(59,130,246,0.8)',
           borderRadius: 4,
           barPercentage: 0.6
         },
         {
           label: 'Under 18',
-          data: data.map(d => d.minors),
+          data: data.map(function(d) { return d.minors; }),
           backgroundColor: 'rgba(139,92,246,0.65)',
           borderRadius: 4,
           barPercentage: 0.6
@@ -920,7 +919,7 @@ function buildComparisonChart(data) {
         tooltip: {
           callbacks: {
             afterBody: function(items) {
-              const idx = items[0].dataIndex;
+              var idx = items[0].dataIndex;
               return 'Total: ' + data[idx].total;
             }
           }
@@ -938,106 +937,91 @@ function buildComparisonChart(data) {
 //  INDIVIDUAL CHURCH DETAIL
 // ════════════════════════════════════════════════
 function renderDetail() {
-  const sel = document.getElementById('detailChurchSelect');
-  const container = document.getElementById('detailContent');
-  const name = sel.value;
+  var sel = document.getElementById('detailChurchSelect');
+  var container = document.getElementById('detailContent');
+  var name = sel.value;
   if (!name) { container.innerHTML = ''; return; }
 
-  const allData = getAllData();
-  const entries = allData[name] || [];
+  var allData = getAllData();
+  var entries = allData[name] || [];
   if (!entries.length) {
     container.innerHTML = '<p style="color:var(--text-muted);padding:20px 0;">No reports for this church.</p>';
     return;
   }
 
-  const chronoEntries = [...entries];
-  const labels = chronoEntries.map(e => {
-    const d = new Date(e.timestamp);
+  var chronoEntries = entries.slice();
+  var labels = chronoEntries.map(function(e) {
+    var d = new Date(e.timestamp);
     return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
   });
 
-  container.innerHTML = `
-    <div style="overflow-x:auto;">
-      <table class="detail-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Adults</th>
-            <th>Under 18</th>
-            <th>Midweek</th>
-            <th>Total</th>
-            <th>Salvations</th>
-            <th>Water Bapt.</th>
-            <th>Spirit Bapt.</th>
-            <th>Communion</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${[...entries].reverse().map(e => {
-            const d = new Date(e.timestamp);
-            const dateStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            const total = (e.attendAdults || 0) + (e.attendMinors || 0);
-            return `<tr>
-              <td>${dateStr}</td>
-              <td>${e.attendAdults || 0}</td>
-              <td>${e.attendMinors || 0}</td>
-              <td>${e.attendMidweek || 0}</td>
-              <td><strong>${total}</strong></td>
-              <td>${e.salvations || 0}</td>
-              <td>${e.waterBaptisms || 0}</td>
-              <td>${e.spiritBaptisms || 0}</td>
-              <td>${e.communionCount || 0}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div style="margin-top:20px;">
-      <div class="chart-title">Attendance Trend &mdash; ${esc(name)}</div>
-      <canvas id="detailLineCanvas" height="200"></canvas>
-    </div>
-    <div style="margin-top:20px;overflow-x:auto;">
-      <div class="chart-title">Compliance History</div>
-      <table class="detail-table">
-        <thead><tr><th>Date</th><th>Ministry Safe</th><th>Aplos</th><th>Insurance</th></tr></thead>
-        <tbody>
-          ${[...entries].reverse().map(e => {
-            const d = new Date(e.timestamp);
-            const dateStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-            const ins = Array.isArray(e.insurance) ? e.insurance.join(', ') : (e.insurance || '');
-            return `<tr><td>${dateStr}</td><td>${e.ministrySafe || '--'}</td><td>${e.aplos || '--'}</td><td>${ins || '--'}</td></tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+  // Build detail table rows
+  var reversedEntries = entries.slice().reverse();
+  var detailRowsHtml = reversedEntries.map(function(e) {
+    var d = new Date(e.timestamp);
+    var dateStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    var total = (e.attendAdults || 0) + (e.attendMinors || 0);
+    return '<tr>'
+      + '<td>' + dateStr + '</td>'
+      + '<td>' + (e.attendAdults || 0) + '</td>'
+      + '<td>' + (e.attendMinors || 0) + '</td>'
+      + '<td>' + (e.attendMidweek || 0) + '</td>'
+      + '<td><strong>' + total + '</strong></td>'
+      + '<td>' + (e.salvations || 0) + '</td>'
+      + '<td>' + (e.waterBaptisms || 0) + '</td>'
+      + '<td>' + (e.spiritBaptisms || 0) + '</td>'
+      + '<td>' + (e.communionCount || 0) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // Build compliance history rows
+  var compHistHtml = reversedEntries.map(function(e) {
+    var d = new Date(e.timestamp);
+    var dateStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    var ins = Array.isArray(e.insurance) ? e.insurance.join(', ') : (e.insurance || '');
+    return '<tr><td>' + dateStr + '</td><td>' + (e.ministrySafe || '--') + '</td><td>' + (e.aplos || '--') + '</td><td>' + (ins || '--') + '</td></tr>';
+  }).join('');
+
+  container.innerHTML = ''
+    + '<div style="overflow-x:auto;">'
+    + '<table class="detail-table"><thead><tr>'
+    + '<th>Date</th><th>Adults</th><th>Under 18</th><th>Midweek</th><th>Total</th>'
+    + '<th>Salvations</th><th>Water Bapt.</th><th>Spirit Bapt.</th><th>Communion</th>'
+    + '</tr></thead><tbody>' + detailRowsHtml + '</tbody></table></div>'
+    + '<div style="margin-top:20px;">'
+    + '<div class="chart-title">Attendance Trend &mdash; ' + esc(name) + '</div>'
+    + '<canvas id="detailLineCanvas" height="200"></canvas></div>'
+    + '<div style="margin-top:20px;overflow-x:auto;">'
+    + '<div class="chart-title">Compliance History</div>'
+    + '<table class="detail-table"><thead><tr><th>Date</th><th>Ministry Safe</th><th>Aplos</th><th>Insurance</th></tr></thead>'
+    + '<tbody>' + compHistHtml + '</tbody></table></div>';
 
   // Detail line chart
   if (detailLineChart) detailLineChart.destroy();
-  const ctx = document.getElementById('detailLineCanvas');
+  var ctx = document.getElementById('detailLineCanvas');
   if (!ctx) return;
   detailLineChart = new Chart(ctx.getContext('2d'), {
     type: 'line',
     data: {
-      labels,
+      labels: labels,
       datasets: [
         {
           label: 'Adults',
-          data: chronoEntries.map(e => e.attendAdults || 0),
+          data: chronoEntries.map(function(e) { return e.attendAdults || 0; }),
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59,130,246,0.06)',
           fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#3b82f6', borderWidth: 2
         },
         {
           label: 'Under 18',
-          data: chronoEntries.map(e => e.attendMinors || 0),
+          data: chronoEntries.map(function(e) { return e.attendMinors || 0; }),
           borderColor: '#22c55e',
           backgroundColor: 'rgba(34,197,94,0.06)',
           fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#22c55e', borderWidth: 2
         },
         {
           label: 'Midweek',
-          data: chronoEntries.map(e => e.attendMidweek || 0),
+          data: chronoEntries.map(function(e) { return e.attendMidweek || 0; }),
           borderColor: '#f59e0b',
           backgroundColor: 'transparent',
           borderDash: [5, 4], tension: 0.3, pointRadius: 3, pointBackgroundColor: '#f59e0b', borderWidth: 2
@@ -1061,8 +1045,8 @@ function renderDetail() {
 //  DEMO DATA
 // ════════════════════════════════════════════════
 function loadDemoData() {
-  const now = new Date();
-  const demoChurches = [
+  var now = new Date();
+  var demoChurches = [
     {
       name: 'New Life AG',
       city: 'Mesquite',
@@ -1153,13 +1137,12 @@ function loadDemoData() {
     }
   ];
 
-  const data = {};
+  var data = {};
 
-  demoChurches.forEach(church => {
-    data[church.name] = church.months.map((m, i) => {
-      // 3 months: i=0 is 3 months ago, i=1 is 2 months ago, i=2 is last month
-      const monthsAgo = church.months.length - i;
-      const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 15, 10, 0, 0);
+  demoChurches.forEach(function(church) {
+    data[church.name] = church.months.map(function(m, i) {
+      var monthsAgo = church.months.length - i;
+      var d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 15, 10, 0, 0);
       return {
         timestamp: d.toISOString(),
         churchName: church.name,
@@ -1194,26 +1177,26 @@ function loadDemoData() {
   setAllData(data);
   populateMonthFilter();
   renderDashboard();
-  showToast('Demo data loaded — 8 churches, 3 months each');
+  showToast('Demo data loaded \u2014 8 churches, 3 months each');
 }
 
 // ════════════════════════════════════════════════
 //  EXPORT ALL CSV
 // ════════════════════════════════════════════════
 function exportAllCSV() {
-  const allData = getAllData();
-  const churches = Object.keys(allData);
+  var allData = getAllData();
+  var churches = Object.keys(allData);
   if (!churches.length) { showToast('No data to export'); return; }
 
-  const headers = ['Date','Church','Pastor','Adults','Under 18','Total','Midweek','Salvations','Water Baptisms','Spirit Baptisms','Communion','Ministry Safe','Aplos','Insurance','Comments'];
-  const rows = [];
-  churches.sort().forEach(ch => {
-    allData[ch].forEach(e => {
-      const total = (e.attendAdults || 0) + (e.attendMinors || 0);
+  var headers = ['Date','Church','Pastor','Adults','Under 18','Total','Midweek','Salvations','Water Baptisms','Spirit Baptisms','Communion','Ministry Safe','Aplos','Insurance','Comments'];
+  var rows = [];
+  churches.sort().forEach(function(ch) {
+    allData[ch].forEach(function(e) {
+      var total = (e.attendAdults || 0) + (e.attendMinors || 0);
       rows.push([
         new Date(e.timestamp).toLocaleDateString('en-US'),
-        `"${(e.churchName || '').replace(/"/g,'""')}"`,
-        `"${(e.pastorFirst || '')} ${(e.pastorLast || '')}"`,
+        '"' + (e.churchName || '').replace(/"/g, '""') + '"',
+        '"' + (e.pastorFirst || '') + ' ' + (e.pastorLast || '') + '"',
         e.attendAdults || 0,
         e.attendMinors || 0,
         total,
@@ -1222,18 +1205,22 @@ function exportAllCSV() {
         e.waterBaptisms || 0,
         e.spiritBaptisms || 0,
         e.communionCount || 0,
-        `"${e.ministrySafe || ''}"`,
-        `"${e.aplos || ''}"`,
-        `"${(Array.isArray(e.insurance) ? e.insurance.join('; ') : '')}"`,
-        `"${(e.comments || '').replace(/"/g,'""')}"`
+        '"' + (e.ministrySafe || '') + '"',
+        '"' + (e.aplos || '') + '"',
+        '"' + (Array.isArray(e.insurance) ? e.insurance.join('; ') : '') + '"',
+        '"' + (e.comments || '').replace(/"/g, '""') + '"'
       ]);
     });
   });
 
-  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  var csvParts = [headers.join(',')];
+  for (var ri = 0; ri < rows.length; ri++) {
+    csvParts.push(rows[ri].join(','));
+  }
+  var csv = csvParts.join('\n');
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url;
   a.download = 'DA_Metro_East_All_Reports.csv';
   document.body.appendChild(a);
@@ -1258,22 +1245,22 @@ function clearAllData() {
 //  UTILITIES
 // ════════════════════════════════════════════════
 function esc(str) {
-  const el = document.createElement('span');
+  var el = document.createElement('span');
   el.textContent = str || '';
   return el.innerHTML;
 }
 
 function showToast(msg) {
-  const t = document.getElementById('toast');
+  var t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('visible');
-  setTimeout(() => t.classList.remove('visible'), 2500);
+  setTimeout(function() { t.classList.remove('visible'); }, 2500);
 }
 
 // ════════════════════════════════════════════════
 //  AUTO-REFRESH (detect localStorage changes)
 // ════════════════════════════════════════════════
-window.addEventListener('storage', (e) => {
+window.addEventListener('storage', function(e) {
   if (e.key === STORAGE_KEY) {
     populateMonthFilter();
     renderDashboard();
@@ -1281,8 +1268,8 @@ window.addEventListener('storage', (e) => {
 });
 
 // Also poll every 30s for same-tab changes
-setInterval(() => {
-  const current = localStorage.getItem(STORAGE_KEY);
+setInterval(function() {
+  var current = localStorage.getItem(STORAGE_KEY);
   if (current !== window._lastDataSnapshot) {
     window._lastDataSnapshot = current;
     populateMonthFilter();
@@ -1293,7 +1280,7 @@ setInterval(() => {
 // ════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   window._lastDataSnapshot = localStorage.getItem(STORAGE_KEY);
   populateMonthFilter();
   renderDashboard();
