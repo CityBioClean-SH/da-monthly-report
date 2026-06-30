@@ -2180,7 +2180,7 @@ function submitReport() {
   saveSubmission(entry.churchName, entry);
 
   // POST to Google Apps Script backend
-  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwXyolshPif40CNBJ7-Tkf607imsMy43hRuQMfAsFdr7HettQ0rCO-sZ4ObNoGrrfld/exec';
+  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzkW_plpuMY6jzJ7VwZzMiJ5F09yHqeVkEbwM_iiQVEMTePm8TDIRAEGf6gZ9N3EDYI/exec';
   if (BACKEND_URL) {
     fetch(BACKEND_URL, {
       method: 'POST',
