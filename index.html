@@ -2179,18 +2179,7 @@ function submitReport() {
   // Save locally for history/trends
   saveSubmission(entry.churchName, entry);
 
-  // POST to Google Apps Script backend
-  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzkW_plpuMY6jzJ7VwZzMiJ5F09yHqeVkEbwM_iiQVEMTePm8TDIRAEGf6gZ9N3EDYI/exec';
-  if (BACKEND_URL) {
-    fetch(BACKEND_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(entry)
-    }).catch(function() {}); // silent fail — data is already saved locally
-  }
-
-  // Show success + confetti
+  // Show success + confetti immediately (data saved locally)
   btn.disabled = false;
   updateStepUI();
   var overlay = document.getElementById('successOverlay');
