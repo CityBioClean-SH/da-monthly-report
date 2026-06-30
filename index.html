@@ -298,6 +298,44 @@ body {
   transition: all var(--transition);
   outline: none;
   -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.money-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fafbfd;
+  overflow: hidden;
+  transition: all var(--transition);
+}
+.money-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+  background: var(--card);
+}
+.money-prefix {
+  padding: 12px 0 12px 16px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+.money-input {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding-left: 8px !important;
+}
+.money-input:focus {
+  box-shadow: none !important;
 }
 .field-input:focus {
   border-color: var(--accent);
@@ -1302,38 +1340,38 @@ textarea.field-input {
 
         <div class="field">
           <label class="field-label">Total Income This Month</label>
-          <div class="number-row">
-            <span style="font-size:20px; font-weight:600; color:var(--text-muted); margin-right:4px;">$</span>
-            <input type="number" class="field-input" id="totalIncome" min="0" step="0.01" placeholder="0.00" style="flex:1;">
-            <span class="last-month-badge" id="lm_totalIncome">No prior data</span>
+          <div class="money-input-wrap">
+            <span class="money-prefix">$</span>
+            <input type="number" class="field-input money-input" id="totalIncome" min="0" step="0.01" placeholder="0.00">
           </div>
+          <div class="last-month-badge" id="lm_totalIncome"><span class="last-month-label">Last month</span><span class="last-month-val trend-same">&mdash;</span></div>
         </div>
 
         <div class="field">
           <label class="field-label">Total Expenses This Month</label>
-          <div class="number-row">
-            <span style="font-size:20px; font-weight:600; color:var(--text-muted); margin-right:4px;">$</span>
-            <input type="number" class="field-input" id="totalExpenses" min="0" step="0.01" placeholder="0.00" style="flex:1;">
-            <span class="last-month-badge" id="lm_totalExpenses">No prior data</span>
+          <div class="money-input-wrap">
+            <span class="money-prefix">$</span>
+            <input type="number" class="field-input money-input" id="totalExpenses" min="0" step="0.01" placeholder="0.00">
           </div>
+          <div class="last-month-badge" id="lm_totalExpenses"><span class="last-month-label">Last month</span><span class="last-month-val trend-same">&mdash;</span></div>
         </div>
 
         <div class="field">
           <label class="field-label">Checking Account Balance</label>
-          <div class="number-row">
-            <span style="font-size:20px; font-weight:600; color:var(--text-muted); margin-right:4px;">$</span>
-            <input type="number" class="field-input" id="checkingBalance" min="0" step="0.01" placeholder="0.00" style="flex:1;">
-            <span class="last-month-badge" id="lm_checkingBalance">No prior data</span>
+          <div class="money-input-wrap">
+            <span class="money-prefix">$</span>
+            <input type="number" class="field-input money-input" id="checkingBalance" min="0" step="0.01" placeholder="0.00">
           </div>
+          <div class="last-month-badge" id="lm_checkingBalance"><span class="last-month-label">Last month</span><span class="last-month-val trend-same">&mdash;</span></div>
         </div>
 
         <div class="field">
           <label class="field-label">Savings Account Balance</label>
-          <div class="number-row">
-            <span style="font-size:20px; font-weight:600; color:var(--text-muted); margin-right:4px;">$</span>
-            <input type="number" class="field-input" id="savingsBalance" min="0" step="0.01" placeholder="0.00" style="flex:1;">
-            <span class="last-month-badge" id="lm_savingsBalance">No prior data</span>
+          <div class="money-input-wrap">
+            <span class="money-prefix">$</span>
+            <input type="number" class="field-input money-input" id="savingsBalance" min="0" step="0.01" placeholder="0.00">
           </div>
+          <div class="last-month-badge" id="lm_savingsBalance"><span class="last-month-label">Last month</span><span class="last-month-val trend-same">&mdash;</span></div>
         </div>
       </div>
     </div>
