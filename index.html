@@ -1537,11 +1537,7 @@ textarea.field-input {
     <div class="success-title">Report Submitted!</div>
     <div class="success-msg">Your monthly report has been saved. Thank you for your faithfulness in shepherding your congregation.</div>
     <div class="success-actions">
-      <a class="btn-success-action primary" id="emailReportBtn" href="#">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Email Report to Presbyter
-      </a>
-      <button class="btn-success-action" onclick="closeSuccess()">
+      <button class="btn-success-action primary" onclick="closeSuccess()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
         Start New Report
       </button>
@@ -2180,25 +2176,27 @@ function submitReport() {
 
   var entry = gatherEntry();
 
-  setTimeout(function() {
-    saveSubmission(entry.churchName, entry);
-    btn.disabled = false;
-    updateStepUI();
+  // Save locally for history/trends
+  saveSubmission(entry.churchName, entry);
 
-    // Mailto
-    var mailBody = buildEmailBody(entry);
-    var mailLink = 'mailto:?subject=' +
-      encodeURIComponent('DA Monthly Report \u2014 ' + entry.churchName + ' \u2014 ' +
-      new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })) +
-      '&body=' + encodeURIComponent(mailBody);
-    document.getElementById('emailReportBtn').href = mailLink;
+  // POST to Google Apps Script backend
+  var BACKEND_URL = ''; // <-- Paste your GAS web app URL here after deploying
+  if (BACKEND_URL) {
+    fetch(BACKEND_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    }).catch(function() {}); // silent fail — data is already saved locally
+  }
 
-    // Show success + confetti
-    var overlay = document.getElementById('successOverlay');
-    overlay.style.display = 'flex';
-    requestAnimationFrame(function() { overlay.classList.add('visible'); });
-    launchConfetti();
-  }, 600);
+  // Show success + confetti
+  btn.disabled = false;
+  updateStepUI();
+  var overlay = document.getElementById('successOverlay');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(function() { overlay.classList.add('visible'); });
+  launchConfetti();
 }
 
 function buildEmailBody(e) {
