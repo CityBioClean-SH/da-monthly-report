@@ -2179,7 +2179,16 @@ function submitReport() {
   // Save locally for history/trends
   saveSubmission(entry.churchName, entry);
 
-  // Show success + confetti immediately (data saved locally)
+  // POST to GAS backend (writes to Sheet + compliance alerts)
+  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzVXHAXRzHh_rMYNPey5l5wa1NCT8ome_mlGWSij2mTe6ChNTafBxdEWO4yJX_HzL0U/exec';
+  fetch(BACKEND_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(entry)
+  }).catch(function() {});
+
+  // Show success + confetti
   btn.disabled = false;
   updateStepUI();
   var overlay = document.getElementById('successOverlay');
